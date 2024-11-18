@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Explorer</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: black;
+        }
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        .controls {
+            position: fixed;
+            bottom: min(5vh, 30px);
+            left: 50%;
+            transform: translateX(-50%);
+            color: #0ff;
+            font-family: "Space Mono", monospace;
+            background: rgba(0, 10, 20, 0.7);
+            padding: min(3vw, 20px);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            width: min(25vw, 150px);
+            height: min(25vw, 150px);
+            border: min(0.4vw, 2px) solid #0ff;
+            box-shadow: 0 0 min(4vw, 20px) rgba(0, 255, 255, 0.2);
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .controls:hover {
+            opacity: 1;
+        }
+        .controls.fade {
+            opacity: 0.7;
+        }
+        .speed-dial {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        .speed-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: min(6vw, 2em);
+            font-weight: bold;
+            text-shadow: 0 0 min(2vw, 10px) rgba(0, 255, 255, 0.5);
+        }
+        .speed-unit {
+            position: absolute;
+            top: 65%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: min(2.5vw, 0.8em);
+            opacity: 0.8;
+        }
+        .dial-marker {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            clip: rect(0px, 50%, 100%, 0px);
+            background: conic-gradient(from 180deg, transparent 50%, #0ff 50%);
+            opacity: 0.2;
+        }
+        .instructions {
+            position: absolute;
+            bottom: min(-8vh, -40px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: max-content;
+            max-width: 90vw;
+            font-size: min(2.5vw, 0.8em);
+            color: #0ff;
+            opacity: 0.8;
+            text-shadow: 0 0 min(1vw, 5px) rgba(0, 255, 255, 0.5);
+            text-align: center;
+            padding: min(1vw, 5px);
+        }
+        @media (max-width: 768px) {
+            .controls {
+                width: min(35vw, 120px);
+                height: min(35vw, 120px);
+                bottom: min(10vh, 50px);
+            }
+            .instructions {
+                bottom: min(-12vh, -50px);
+            }
+            .instructions span {
+                display: block;
+                margin: min(1vh, 3px) 0;
+            }
+        }
+        @media (max-height: 600px) {
+            .controls {
+                bottom: min(8vh, 30px);
+                width: min(20vh, 100px);
+                height: min(20vh, 100px);
+            }
+            .instructions {
+                bottom: min(-6vh, -25px);
+            }
+        }
+        @keyframes glow {
+            0% { box-shadow: 0 0 min(4vw, 20px) rgba(0, 255, 255, 0.2); }
+            50% { box-shadow: 0 0 min(6vw, 30px) rgba(0, 255, 255, 0.4); }
+            100% { box-shadow: 0 0 min(4vw, 20px) rgba(0, 255, 255, 0.2); }
+        }
+        .controls {
+            animation: glow 2s infinite;
+        }
+        /* Prevent text selection during drag */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls fade">
+        <div class="speed-dial">
+            <div class="dial-marker"></div>
+            <div class="speed-value">0.0</div>
+            <div class="speed-unit">WARP</div>
+        </div>
+        <div class="instructions">
+            <span>↑/W or ↓/S • SPACE to stop/resume • DRAG to control</span>
+        </div>
+    </div>
+    <script async src="https://unpkg.com/es-module-shims/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module" src="space.js"></script>
+</body>
+</html>
