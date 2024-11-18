@@ -2,140 +2,221 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Explorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Space Drift</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background: black;
+            font-family: "Orbitron", -apple-system, BlinkMacSystemFont, sans-serif;
+            touch-action: none;
         }
-        canvas {
-            width: 100vw;
-            height: 100vh;
-            display: block;
+
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
         }
-        .controls {
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        .speed-control {
             position: fixed;
-            bottom: min(5vh, 30px);
-            left: 50%;
-            transform: translateX(-50%);
-            color: #0ff;
-            font-family: "Space Mono", monospace;
-            background: rgba(0, 10, 20, 0.7);
-            padding: min(3vw, 20px);
-            border-radius: 50%;
+            bottom: 20px;
+            left: 0;
+            right: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            backdrop-filter: blur(5px);
-            transition: all 0.3s ease;
-            width: min(25vw, 150px);
-            height: min(25vw, 150px);
-            border: min(0.4vw, 2px) solid #0ff;
-            box-shadow: 0 0 min(4vw, 20px) rgba(0, 255, 255, 0.2);
+            gap: 15px;
+            padding: 20px;
+            z-index: 1000;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none;
         }
-        .controls:hover {
-            opacity: 1;
-        }
-        .controls.fade {
-            opacity: 0.7;
-        }
-        .speed-dial {
+
+        .speed-gauge {
+            width: min(80%, 300px);
+            height: 120px;
+            background: rgba(0, 10, 20, 0.9);
+            border: 2px solid #0ff;
+            border-radius: 15px;
             position: relative;
-            width: 100%;
-            height: 100%;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2),
+                        inset 0 0 20px rgba(0, 255, 255, 0.1);
         }
-        .speed-value {
+
+        .speed-gauge::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100%;
+            background: linear-gradient(transparent 0%, 
+                                    rgba(0, 255, 255, 0.1) 10%, 
+                                    transparent 100%);
+            animation: scanline 2s linear infinite;
+            pointer-events: none;
+        }
+
+        .speed-display {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: min(6vw, 2em);
-            font-weight: bold;
-            text-shadow: 0 0 min(2vw, 10px) rgba(0, 255, 255, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
         }
-        .speed-unit {
-            position: absolute;
-            top: 65%;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: min(2.5vw, 0.8em);
-            opacity: 0.8;
-        }
-        .dial-marker {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            clip: rect(0px, 50%, 100%, 0px);
-            background: conic-gradient(from 180deg, transparent 50%, #0ff 50%);
-            opacity: 0.2;
-        }
-        .instructions {
-            position: absolute;
-            bottom: min(-8vh, -40px);
-            left: 50%;
-            transform: translateX(-50%);
-            width: max-content;
-            max-width: 90vw;
-            font-size: min(2.5vw, 0.8em);
+
+        .speed-value {
+            font-size: 36px;
             color: #0ff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .speed-label {
+            font-size: 14px;
+            color: #0ff;
+            text-transform: uppercase;
+            letter-spacing: 3px;
             opacity: 0.8;
-            text-shadow: 0 0 min(1vw, 5px) rgba(0, 255, 255, 0.5);
+        }
+
+        .speed-bars {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            height: 30px;
+            display: flex;
+            gap: 3px;
+        }
+
+        .speed-bar {
+            flex: 1;
+            background: rgba(0, 255, 255, 0.2);
+            transform-origin: bottom;
+            transition: transform 0.2s ease;
+        }
+
+        .speed-bar.active {
+            background: #0ff;
+            box-shadow: 0 0 10px #0ff;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .speed-marker {
+            position: absolute;
+            top: 15px;
+            left: 10px;
+            right: 10px;
+            height: 2px;
+            background: rgba(0, 255, 255, 0.3);
+        }
+
+        .speed-marker::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: var(--marker-position, 0%);
+            width: 4px;
+            height: 12px;
+            background: #0ff;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px #0ff;
+            transition: left 0.2s ease;
+        }
+
+        .hint {
+            color: rgba(0, 255, 255, 0.8);
+            background: rgba(0, 10, 20, 0.9);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
             text-align: center;
-            padding: min(1vw, 5px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            white-space: nowrap;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
+
+        .hint.visible {
+            opacity: 1;
+        }
+
+        .key {
+            display: inline-block;
+            padding: 2px 8px;
+            background: rgba(0, 255, 255, 0.2);
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            border-radius: 4px;
+            margin: 0 2px;
+            font-size: 12px;
+            box-shadow: 0 0 5px rgba(0, 255, 255, 0.2);
+        }
+
         @media (max-width: 768px) {
-            .controls {
-                width: min(35vw, 120px);
-                height: min(35vw, 120px);
-                bottom: min(10vh, 50px);
+            .speed-gauge {
+                height: 150px;
             }
-            .instructions {
-                bottom: min(-12vh, -50px);
+            
+            .speed-value {
+                font-size: 42px;
             }
-            .instructions span {
-                display: block;
-                margin: min(1vh, 3px) 0;
+            
+            .speed-bars {
+                height: 40px;
             }
-        }
-        @media (max-height: 600px) {
-            .controls {
-                bottom: min(8vh, 30px);
-                width: min(20vh, 100px);
-                height: min(20vh, 100px);
-            }
-            .instructions {
-                bottom: min(-6vh, -25px);
+            
+            .hint {
+                font-size: 16px;
+                padding: 12px 20px;
             }
         }
-        @keyframes glow {
-            0% { box-shadow: 0 0 min(4vw, 20px) rgba(0, 255, 255, 0.2); }
-            50% { box-shadow: 0 0 min(6vw, 30px) rgba(0, 255, 255, 0.4); }
-            100% { box-shadow: 0 0 min(4vw, 20px) rgba(0, 255, 255, 0.2); }
-        }
-        .controls {
-            animation: glow 2s infinite;
-        }
-        /* Prevent text selection during drag */
-        * {
-            -webkit-tap-highlight-color: transparent;
+
+        @media (pointer: coarse) {
+            body {
+                overscroll-behavior: none;
+            }
         }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="controls fade">
-        <div class="speed-dial">
-            <div class="dial-marker"></div>
-            <div class="speed-value">0.0</div>
-            <div class="speed-unit">WARP</div>
+    <div class="speed-control">
+        <div class="hint">
+            <span class="desktop-hint">
+                <span class="key">↑</span><span class="key">↓</span> or <span class="key">Space</span> to control
+            </span>
+            <span class="mobile-hint">
+                Slide up/down • Tap to stop
+            </span>
         </div>
-        <div class="instructions">
-            <span>↑/W or ↓/S • SPACE to stop/resume • DRAG to control</span>
+        <div class="speed-gauge">
+            <div class="speed-marker"></div>
+            <div class="speed-display">
+                <div class="speed-value">0.0</div>
+                <div class="speed-label">WARP</div>
+            </div>
+            <div class="speed-bars">
+                <!-- Bars will be added by JavaScript -->
+            </div>
         </div>
     </div>
     <script async src="https://unpkg.com/es-module-shims/dist/es-module-shims.js"></script>

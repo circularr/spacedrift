@@ -96,136 +96,164 @@ const bloomPass = new UnrealBloomPass(
 );
 composer.addPass(bloomPass);
 
-// Camera position and movement
+// Camera position
 camera.position.z = 0;
-let speed = 10;
-let targetSpeed = speed;
-const smoothing = 0.05;
-const maxSpeed = 50;
-const minSpeed = 0;
+let speed = 0;
+
+// UI Elements
+const ui = {
+    speedGauge: document.querySelector('.speed-gauge'),
+    speedValue: document.querySelector('.speed-value'),
+    speedBars: document.querySelector('.speed-bars'),
+    speedMarker: document.querySelector('.speed-marker'),
+    hint: document.querySelector('.hint'),
+    desktopHint: document.querySelector('.desktop-hint'),
+    mobileHint: document.querySelector('.mobile-hint')
+};
 
 // Control state
 const controls = {
-    isMouseDown: false,
-    touchStartY: 0,
-    lastTouchY: 0,
-    speedValue: document.querySelector('.speed-value'),
-    dialMarker: document.querySelector('.dial-marker')
+    currentSpeed: 0,
+    targetSpeed: 0,
+    maxSpeed: 50,
+    minSpeed: 0,
+    acceleration: 0.05,
+    touchSensitivity: 2.0,
+    mouseSensitivity: 1.5,
+    barCount: 20
 };
 
-// Speed control functions
-function increaseSpeed(amount = 5) {
-    targetSpeed = Math.min(maxSpeed, targetSpeed + amount);
-    updateSpeedDisplay();
+// Create speed bars
+function createSpeedBars() {
+    for (let i = 0; i < controls.barCount; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'speed-bar';
+        ui.speedBars.appendChild(bar);
+    }
 }
 
-function decreaseSpeed(amount = 5) {
-    targetSpeed = Math.max(minSpeed, targetSpeed - amount);
+// Show appropriate hints based on device
+function updateHints() {
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    ui.desktopHint.style.display = isTouchDevice ? 'none' : 'inline';
+    ui.mobileHint.style.display = isTouchDevice ? 'inline' : 'none';
+    ui.hint.classList.add('visible');
+}
+
+// Hide hints after delay
+function hideHintsAfterDelay() {
+    setTimeout(() => ui.hint.classList.remove('visible'), 3000);
+}
+
+// Speed control
+function setSpeed(newSpeed) {
+    controls.targetSpeed = Math.max(controls.minSpeed, Math.min(controls.maxSpeed, newSpeed));
     updateSpeedDisplay();
 }
 
 function updateSpeedDisplay() {
-    // Update the speed value display
-    const displaySpeed = Math.round((targetSpeed / maxSpeed) * 9.9);
-    controls.speedValue.textContent = displaySpeed.toFixed(1);
+    // Update digital display
+    const displaySpeed = Math.abs(controls.currentSpeed).toFixed(1);
+    ui.speedValue.textContent = displaySpeed;
     
-    // Update the dial marker rotation
-    const rotation = (targetSpeed / maxSpeed) * 360;
-    controls.dialMarker.style.transform = `rotate(${rotation}deg)`;
+    // Calculate speed percentage
+    const speedPercent = (controls.currentSpeed / controls.maxSpeed);
     
-    // Update the glow intensity based on speed
-    const glowIntensity = 0.2 + (targetSpeed / maxSpeed) * 0.8;
-    controls.dialMarker.style.opacity = glowIntensity;
+    // Update marker position
+    ui.speedMarker.style.setProperty('--marker-position', `${speedPercent * 100}%`);
+    
+    // Update speed bars
+    const activeBars = Math.floor(speedPercent * controls.barCount);
+    const bars = ui.speedBars.children;
+    
+    for (let i = 0; i < bars.length; i++) {
+        const bar = bars[i];
+        const isActive = i < activeBars;
+        bar.classList.toggle('active', isActive);
+        
+        // Dynamic height for bars
+        const heightPercent = isActive ? 100 : 30;
+        bar.style.transform = `scaleY(${heightPercent}%)`;
+    }
+    
+    // Update visual effects based on speed
+    const intensity = Math.abs(speedPercent);
+    const hue = 180 + intensity * 40;
+    const glow = 10 + intensity * 30;
+    
+    // Apply visual effects
+    ui.speedGauge.style.boxShadow = `
+        0 0 ${glow}px rgba(0, 255, 255, ${0.2 + intensity * 0.3}),
+        inset 0 0 ${glow/2}px rgba(0, 255, 255, ${0.1 + intensity * 0.2})
+    `;
+    
+    // Update speed value glow
+    ui.speedValue.style.textShadow = `0 0 ${5 + intensity * 15}px rgba(0, 255, 255, 0.8)`;
+}
+
+// Input handling
+let isDragging = false;
+let startY = 0;
+let startSpeed = 0;
+
+function handleStart(e) {
+    isDragging = true;
+    startY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+    startSpeed = controls.targetSpeed;
+    hideHintsAfterDelay();
+}
+
+function handleMove(e) {
+    if (!isDragging) return;
+    
+    const currentY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+    const deltaY = startY - currentY;
+    const sensitivity = e.type.includes('touch') ? controls.touchSensitivity : controls.mouseSensitivity;
+    const speedChange = (deltaY / window.innerHeight) * controls.maxSpeed * sensitivity;
+    
+    setSpeed(startSpeed + speedChange);
+    e.preventDefault();
+}
+
+function handleEnd() {
+    isDragging = false;
 }
 
 // Keyboard controls
 window.addEventListener('keydown', (e) => {
-    switch(e.key) {
-        case 'ArrowUp':
+    switch(e.key.toLowerCase()) {
+        case 'arrowup':
         case 'w':
-            increaseSpeed();
+            setSpeed(controls.targetSpeed + 2);
             break;
-        case 'ArrowDown':
+        case 'arrowdown':
         case 's':
-            decreaseSpeed();
+            setSpeed(controls.targetSpeed - 2);
             break;
-        case ' ': // Spacebar
-            if (targetSpeed < 1) {
-                targetSpeed = 25;
-            } else {
-                targetSpeed = 0;
-            }
-            updateSpeedDisplay();
+        case ' ':
+            setSpeed(controls.currentSpeed < 1 ? 25 : 0);
             break;
     }
+    hideHintsAfterDelay();
+    e.preventDefault();
 });
 
-// Mouse controls
-window.addEventListener('mousedown', (e) => {
-    if (e.target.closest('.controls')) {
-        controls.isMouseDown = true;
-        controls.lastY = e.clientY;
+// Touch and mouse events
+ui.speedGauge.addEventListener('mousedown', handleStart);
+ui.speedGauge.addEventListener('touchstart', handleStart, { passive: false });
+window.addEventListener('mousemove', handleMove);
+window.addEventListener('touchmove', handleMove, { passive: false });
+window.addEventListener('mouseup', handleEnd);
+window.addEventListener('touchend', handleEnd);
+
+// Quick tap to stop
+ui.speedGauge.addEventListener('click', (e) => {
+    if (!isDragging) {
+        setSpeed(0);
     }
 });
 
-window.addEventListener('mouseup', () => {
-    controls.isMouseDown = false;
-});
-
-window.addEventListener('mousemove', (e) => {
-    if (controls.isMouseDown) {
-        const deltaY = e.clientY - controls.lastY;
-        targetSpeed = Math.max(minSpeed, Math.min(maxSpeed, targetSpeed - deltaY * 0.1));
-        controls.lastY = e.clientY;
-        updateSpeedDisplay();
-    }
-});
-
-// Touch controls
-window.addEventListener('touchstart', (e) => {
-    if (e.target.closest('.controls')) {
-        controls.touchStartY = e.touches[0].clientY;
-        controls.lastTouchY = controls.touchStartY;
-    }
-}, { passive: true });
-
-window.addEventListener('touchmove', (e) => {
-    if (e.target.closest('.controls')) {
-        const touch = e.touches[0];
-        const deltaY = touch.clientY - controls.lastTouchY;
-        targetSpeed = Math.max(minSpeed, Math.min(maxSpeed, targetSpeed - deltaY * 0.1));
-        controls.lastTouchY = touch.clientY;
-        updateSpeedDisplay();
-    }
-}, { passive: true });
-
-// Mouse wheel control
-window.addEventListener('wheel', (e) => {
-    if (e.deltaY > 0) {
-        decreaseSpeed(2);
-    } else {
-        increaseSpeed(2);
-    }
-}, { passive: true });
-
-// Initial speed display
-updateSpeedDisplay();
-
-// Handle window resize
-window.addEventListener('resize', () => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    
-    renderer.setSize(width, height);
-    composer.setSize(width, height);
-    
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-    
-    bloomPass.setSize(width, height);
-});
-
-// Animation with frame timing
+// Animation loop
 let lastTime = 0;
 const fpsInterval = 1000 / 60;
 
@@ -238,15 +266,31 @@ function animate(currentTime) {
         lastTime = currentTime - (elapsed % fpsInterval);
         
         // Smooth speed transition
-        speed += (targetSpeed - speed) * smoothing;
+        controls.currentSpeed += (controls.targetSpeed - controls.currentSpeed) * controls.acceleration;
+        speed = controls.currentSpeed;
         
-        // Update star positions
+        // Update stars and display
         stars.forEach(star => star.update(speed));
         updateStarVertices();
+        updateSpeedDisplay();
         
-        // Render with post-processing
         composer.render();
     }
 }
 
+// Initialize
+createSpeedBars();
+updateHints();
 animate(0);
+
+// Handle window resize
+window.addEventListener('resize', () => {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    
+    renderer.setSize(width, height);
+    composer.setSize(width, height);
+});
